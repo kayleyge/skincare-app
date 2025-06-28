@@ -9,6 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for cookie-based auth
 });
 
 // Request interceptor for adding auth token
@@ -65,12 +66,16 @@ api.interceptors.response.use(
 
 // API endpoints
 const authApi = {
+  // Fixed: Backend expects username, not email for login
   login: (username: string, password: string) => 
     api.post('/auth/login', { username, password }),
   register: (userData: any) => 
     api.post('/auth/register', userData),
   logout: () => 
     api.post('/auth/logout'),
+  // Add method to check if user is authenticated
+  checkAuth: () => 
+    api.get('/users/me'),
 };
 
 const userApi = {
@@ -89,4 +94,22 @@ const skinAnalysisApi = {
     api.get(`/skin-analysis/progress?days=${days}`),
 };
 
-export { api, authApi, userApi, skinAnalysisApi }; 
+// Utility function to check authentication status
+export const isAuthenticated = (): boolean => {
+  const token = localStorage.getItem('accessToken');
+  return !!token;
+};
+
+// Utility function to logout user
+export const logout = async (): Promise<void> => {
+  try {
+    await authApi.logout();
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  }
+};
+
+export { api, authApi, userApi, skinAnalysisApi };
