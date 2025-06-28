@@ -1,19 +1,21 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Camera, RotateCcw, Sparkles, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { skinAnalysisApi } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
 
 const ScanInterface = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [hasResult, setHasResult] = useState(false);
-  const [glowScore, setGlowScore] = useState(0);
-  const [metrics, setMetrics] = useState({
+  const [glowScore, setGlowScore] = useState<number | null>(null);
+  const [annotatedImg, setAnnotatedImg] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<{redness: number; darkSpots: number}>({
     redness: 0,
-    blemishes: 0,
-    hydration: 0
+    darkSpots: 0,
   });
   const [scanHistory] = useState([
     { date: '2024-01-15', score: 85, change: +5 },
@@ -23,6 +25,27 @@ const ScanInterface = () => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (base64Img: string) => skinAnalysisApi.analyzeImage(base64Img),
+    onSuccess: (response) => {
+      const data = response.data;
+      setGlowScore(data.skin_score);
+      setMetrics({ redness: data.detected_issues.redness_count, darkSpots: data.detected_issues.dark_spots_count });
+      setAnnotatedImg(data.annotated_image);
+      setIsScanning(false);
+      setHasResult(true);
+      toast({ title: 'Analysis complete' });
+      // Invalidate progress query so charts refresh
+      queryClient.invalidateQueries({ queryKey: ['skin-progress'] });
+    },
+    onError: () => {
+      setIsScanning(false);
+      toast({ title: 'Analysis failed', variant: 'destructive' });
+    }
+  });
 
   const startCamera = useCallback(async () => {
     try {
@@ -56,35 +79,21 @@ const ScanInterface = () => {
         stream.getTracks().forEach(track => track.stop());
       }
       
-      // Simulate AI analysis
-      performAnalysis();
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      performAnalysis(dataUrl);
     }
   }, []);
 
-  const performAnalysis = () => {
+  const performAnalysis = (imgBase64: string) => {
     setIsScanning(true);
-    
-    // Simulate AI processing time
-    setTimeout(() => {
-      // Generate realistic scores
-      const newGlowScore = Math.floor(Math.random() * 20) + 75; // 75-95
-      const newMetrics = {
-        redness: Math.floor(Math.random() * 30) + 15, // 15-45
-        blemishes: Math.floor(Math.random() * 25) + 10, // 10-35
-        hydration: Math.floor(Math.random() * 20) + 70 // 70-90
-      };
-      
-      setGlowScore(newGlowScore);
-      setMetrics(newMetrics);
-      setIsScanning(false);
-      setHasResult(true);
-    }, 3000);
+    mutation.mutate(imgBase64);
   };
 
   const resetScan = () => {
     setHasResult(false);
     setIsScanning(false);
-    setGlowScore(0);
+    setGlowScore(null);
+    setAnnotatedImg(null);
     startCamera();
   };
 
@@ -171,15 +180,15 @@ const ScanInterface = () => {
             </div>
           )}
 
-          {hasResult && (
+          {hasResult && glowScore !== null && (
             <div className="space-y-6">
               {/* Glow Score */}
               <div className="text-center">
                 <div className="relative inline-block">
                   <div className="w-32 h-32 mx-auto rounded-full bg-gradient-to-r from-green-400 to-emerald-500 flex items-center justify-center text-white">
                     <div className="text-center">
-                      <div className="text-3xl font-bold">{glowScore}</div>
-                      <div className="text-sm">Glow Score</div>
+                      <div className="text-3xl font-bold">{glowScore.toFixed(1)}</div>
+                      <div className="text-sm">Skin Score</div>
                     </div>
                   </div>
                   <div className="absolute -bottom-2 -right-2 bg-yellow-400 rounded-full p-2">
@@ -188,32 +197,26 @@ const ScanInterface = () => {
                 </div>
                 <div className="mt-4">
                   <Badge className="bg-gradient-to-r from-green-400 to-emerald-400 text-white text-lg px-4 py-1">
-                    Excellent! +7 from yesterday 🎉
+                    Skin Score
                   </Badge>
                 </div>
               </div>
 
-              {/* Detailed Metrics */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-2xl">
-                  <div className="text-2xl mb-2">💧</div>
-                  <div className="text-sm font-medium text-blue-700">Hydration</div>
-                  <div className="text-lg font-bold text-blue-800">{metrics.hydration}%</div>
-                  <Progress value={metrics.hydration} className="h-1 mt-2" />
+              {annotatedImg && (
+                <div className="rounded-lg overflow-hidden shadow-lg">
+                  <img src={annotatedImg} alt="Annotated result" className="w-full" />
                 </div>
-                
-                <div className="text-center p-4 bg-green-50 rounded-2xl">
-                  <div className="text-2xl mb-2">✨</div>
-                  <div className="text-sm font-medium text-green-700">Clarity</div>
-                  <div className="text-lg font-bold text-green-800">{100 - metrics.blemishes}%</div>
-                  <Progress value={100 - metrics.blemishes} className="h-1 mt-2" />
+              )}
+
+              {/* Metrics display */}
+              <div className="flex justify-center gap-6">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-red-600">{metrics.redness}</p>
+                  <p className="text-sm">Redness spots</p>
                 </div>
-                
-                <div className="text-center p-4 bg-pink-50 rounded-2xl">
-                  <div className="text-2xl mb-2">🌸</div>
-                  <div className="text-sm font-medium text-pink-700">Calmness</div>
-                  <div className="text-lg font-bold text-pink-800">{100 - metrics.redness}%</div>
-                  <Progress value={100 - metrics.redness} className="h-1 mt-2" />
+                <div className="text-center">
+                  <p className="text-xl font-bold text-purple-600">{metrics.darkSpots}</p>
+                  <p className="text-sm">Dark spots</p>
                 </div>
               </div>
 
@@ -292,3 +295,4 @@ const ScanInterface = () => {
 };
 
 export { ScanInterface };
+export default ScanInterface;

@@ -1,33 +1,31 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { skinAnalysisApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { TrendingUp, Calendar, Target, Sparkles, Camera, ShoppingCart, Award } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 
 const ProgressTracker = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
+  const navigate = useNavigate();
 
-  // Mock data for the past 30 days
-  const glowScoreData = [
-    { date: '2024-01-01', score: 72, hydration: 65, clarity: 78, calmness: 74 },
-    { date: '2024-01-03', score: 74, hydration: 68, clarity: 79, calmness: 75 },
-    { date: '2024-01-05', score: 71, hydration: 64, clarity: 76, calmness: 73 },
-    { date: '2024-01-07', score: 76, hydration: 70, clarity: 81, calmness: 77 },
-    { date: '2024-01-09', score: 78, hydration: 72, clarity: 83, calmness: 79 },
-    { date: '2024-01-11', score: 75, hydration: 69, clarity: 80, calmness: 76 },
-    { date: '2024-01-13', score: 80, hydration: 75, clarity: 84, calmness: 81 },
-    { date: '2024-01-15', score: 82, hydration: 77, clarity: 86, calmness: 83 },
-    { date: '2024-01-17', score: 79, hydration: 74, clarity: 83, calmness: 80 },
-    { date: '2024-01-19', score: 84, hydration: 79, clarity: 88, calmness: 85 },
-    { date: '2024-01-21', score: 86, hydration: 81, clarity: 90, calmness: 87 },
-    { date: '2024-01-23', score: 83, hydration: 78, clarity: 87, calmness: 84 },
-    { date: '2024-01-25', score: 87, hydration: 83, clarity: 91, calmness: 88 },
-    { date: '2024-01-27', score: 89, hydration: 85, clarity: 93, calmness: 90 },
-    { date: '2024-01-29', score: 91, hydration: 87, clarity: 95, calmness: 92 },
-  ];
+  const { data: progressData } = useQuery({
+    queryKey: ['skin-progress'],
+    queryFn: () => skinAnalysisApi.getProgress(30).then(res => res.data),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const glowScoreData = progressData?.dates?.map((date: string, idx: number) => ({
+    date,
+    score: progressData.skin_scores[idx],
+    hydration: progressData.redness_counts[idx] ?? 0,
+    clarity: progressData.dark_spot_counts[idx] ?? 0,
+    calmness: 0,
+  })) || [];
 
   const achievements = [
     { 
@@ -103,9 +101,7 @@ const ProgressTracker = () => {
     }
   ];
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,6 +111,14 @@ const ProgressTracker = () => {
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
+
+  // Redirect to login page if no auth token is present
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   return (
     <div className="space-y-6">
