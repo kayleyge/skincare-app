@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Sparkles, ArrowRight, User, Target, ShoppingCart } from "lucide-react";
+import { Sparkles, ArrowRight, User, Target, ShoppingCart, AlertCircle } from "lucide-react";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -15,9 +15,11 @@ interface OnboardingFlowProps {
 
 const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const [step, setStep] = useState(1);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     age: '',
     skinType: '',
     concerns: [] as string[],
@@ -28,7 +30,53 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const totalSteps = 4;
   const progress = (step / totalSteps) * 100;
 
+  const validateStep = (currentStep: number) => {
+    setError('');
+    
+    switch (currentStep) {
+      case 1:
+        if (!formData.name.trim()) {
+          setError('Please enter your name');
+          return false;
+        }
+        if (!formData.email.trim()) {
+          setError('Please enter your email');
+          return false;
+        }
+        if (!formData.password.trim()) {
+          setError('Please create a password');
+          return false;
+        }
+        if (formData.password.length < 6) {
+          setError('Password must be at least 6 characters');
+          return false;
+        }
+        if (!formData.age.trim()) {
+          setError('Please enter your age');
+          return false;
+        }
+        break;
+      case 2:
+        if (!formData.skinType) {
+          setError('Please select your skin type');
+          return false;
+        }
+        break;
+      case 3:
+        if (formData.concerns.length === 0) {
+          setError('Please select at least one skin concern');
+          return false;
+        }
+        break;
+    }
+    return true;
+  };
+
   const handleNext = () => {
+    if (!validateStep(step)) {
+      return;
+    }
+
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
@@ -86,6 +134,13 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
 
         <Card className="bg-white/50 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
           <CardContent className="p-8">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
             {step === 1 && (
               <div className="space-y-6">
                 <div className="text-center">
@@ -98,7 +153,7 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="name">First Name</Label>
+                    <Label htmlFor="name">First Name *</Label>
                     <Input
                       id="name"
                       placeholder="What should we call you?"
@@ -108,7 +163,7 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
                       type="email"
@@ -119,7 +174,18 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="age">Age</Label>
+                    <Label htmlFor="password">Create Password *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="At least 6 characters"
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      className="rounded-2xl"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="age">Age *</Label>
                     <Input
                       id="age"
                       placeholder="25"
@@ -136,7 +202,7 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
               <div className="space-y-6">
                 <div className="text-center">
                   <div className="text-4xl mb-4">🔍</div>
-                  <CardTitle className="text-2xl mb-2">What's your skin type?</CardTitle>
+                  <CardTitle className="text-2xl mb-2">What's your skin type? *</CardTitle>
                   <CardDescription className="text-lg">
                     This helps us understand your skin's baseline needs
                   </CardDescription>
@@ -168,7 +234,7 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
               <div className="space-y-6">
                 <div className="text-center">
                   <Target className="w-16 h-16 mx-auto mb-4 text-pink-500" />
-                  <CardTitle className="text-2xl mb-2">What are your main concerns?</CardTitle>
+                  <CardTitle className="text-2xl mb-2">What are your main concerns? *</CardTitle>
                   <CardDescription className="text-lg">
                     Select all that apply - we'll prioritize these in your routine
                   </CardDescription>
@@ -231,7 +297,10 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
               {step > 1 && (
                 <Button
                   variant="outline"
-                  onClick={() => setStep(step - 1)}
+                  onClick={() => {
+                    setStep(step - 1);
+                    setError('');
+                  }}
                   className="rounded-2xl"
                 >
                   Back

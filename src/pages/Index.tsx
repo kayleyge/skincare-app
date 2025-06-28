@@ -34,6 +34,11 @@ const Index = () => {
     setCurrentView('dashboard');
   };
 
+  const handleNewUserClick = () => {
+    setShowLogin(false);
+    setCurrentView('onboarding');
+  };
+
   if (currentView === 'onboarding') {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
   }
@@ -136,6 +141,14 @@ const Index = () => {
                   <Button variant="outline" className="w-full rounded-full">
                     Continue with Google
                   </Button>
+                  <div className="text-center pt-2">
+                    <button 
+                      onClick={handleNewUserClick}
+                      className="text-sm text-pink-600 hover:text-pink-700 underline"
+                    >
+                      New user? Click here to get started
+                    </button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
