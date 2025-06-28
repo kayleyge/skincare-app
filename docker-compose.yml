@@ -1,0 +1,15 @@
+services:
+  mongodb:
+    image: mongo:6-jammy
+    container_name: glow-guard-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=glow_guard
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local 
