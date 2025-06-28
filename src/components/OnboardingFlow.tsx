@@ -7,13 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Sparkles, ArrowRight, User, Target, ShoppingCart, AlertCircle } from "lucide-react";
-import { authApi } from "@/lib/api";
+import { authApi } from '@/lib/api';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
 const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -81,38 +82,49 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
     if (!validateStep(step)) {
       return;
     }
-
+  
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      // Final step - register user with backend
-      setIsLoading(true);
+      // This is the final step - perform registration
+      setIsSubmitting(true); // Start loading
       try {
-        const userData = {
-          username: formData.username,
+        setError(''); // Clear any existing errors
+        
+        // Call the registration API
+        const response = await authApi.register({
+          name: formData.username,
           email: formData.email,
           password: formData.password,
-          age: parseInt(formData.age),
+          age: formData.age,
           skin_type: formData.skinType,
-          skin_concerns: formData.concerns,
+          concerns: formData.concerns,
           current_products: formData.currentProducts,
           goals: formData.goals
-        };
-
-        const response = await authApi.register(userData);
-        
-        // Store tokens after successful registration
+        });
+  
+        // If successful, store tokens
         if (response.data.access_token) {
           localStorage.setItem('accessToken', response.data.access_token);
           localStorage.setItem('refreshToken', response.data.refresh_token);
         }
-        
+  
+        // Call the onComplete callback to proceed to dashboard
         onComplete();
       } catch (error: any) {
-        console.error('Registration failed:', error);
-        setError(error.response?.data?.detail || 'Registration failed. Please try again.');
+        // Handle registration errors
+        if (error.response?.data?.detail) {
+          setError(error.response.data.detail);
+        } else if (error.response?.status === 409) {
+          setError('An account with this email already exists');
+        } else if (error.response?.status === 400) {
+          setError('Invalid registration data. Please check your information');
+        } else {
+          setError('Registration failed. Please try again.');
+        }
+        console.error('Registration error:', error);
       } finally {
-        setIsLoading(false);
+        setIsSubmitting(false); // Stop loading regardless of outcome
       }
     }
   };
@@ -343,22 +355,22 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
                 Back
               </Button>
             )}
-            <Button
-              onClick={handleNext}
-              className="ml-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-2xl"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                'Creating account...'
-              ) : step === totalSteps ? (
-                'Complete Setup'
-              ) : (
-                <>
-                  Next
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+          <Button
+            onClick={handleNext}
+            disabled={isSubmitting}
+            className="bg-gradient-to-r from-pink-500 to-orange-400 hover:from-pink-600 hover:to-orange-500 rounded-2xl px-8"
+          >
+            {isSubmitting ? (
+              <>
+                <span className="animate-pulse">Creating account...</span>
+              </>
+            ) : (
+              <>
+                {step === totalSteps ? 'Complete Setup' : 'Next'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            )}
+          </Button>
           </div>
         </CardContent>
       </Card>
