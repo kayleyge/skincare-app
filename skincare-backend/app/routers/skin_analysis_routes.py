@@ -4,7 +4,7 @@ from app.database.models import UserModel, SkinAnalysisModel
 from app.auth.auth_bearer import get_current_user
 from app.services.skin_analysis import SkinAnalysisService
 from app.database.mongodb import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/skin-analysis", tags=["Skin Analysis"])

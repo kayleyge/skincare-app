@@ -92,16 +92,29 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
         setError(''); // Clear any existing errors
         
         // Call the registration API
-        const response = await authApi.register({
-          name: formData.username,
+        const payload: any = {
+          username: formData.username,
           email: formData.email,
           password: formData.password,
-          age: formData.age,
           skin_type: formData.skinType,
-          concerns: formData.concerns,
-          current_products: formData.currentProducts,
-          goals: formData.goals
-        });
+          skin_concerns: formData.concerns,
+        };
+
+        // Only include age if it is a valid number
+        const ageNumber = Number(formData.age);
+        if (!isNaN(ageNumber)) {
+          payload.age = ageNumber;
+        }
+
+        if (formData.currentProducts.trim()) {
+          payload.current_products = formData.currentProducts.trim();
+        }
+
+        if (formData.goals.trim()) {
+          payload.goals = formData.goals.trim();
+        }
+
+        const response = await authApi.register(payload);
   
         // If successful, store tokens
         if (response.data.access_token) {
