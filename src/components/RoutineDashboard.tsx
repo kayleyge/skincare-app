@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Clock, Sun, Moon, Droplets, Sparkles, Timer, Play, Pause, RotateCcw } from "lucide-react";
 
 const RoutineDashboard = () => {
-  const [activeTimers, setActiveTimers] = useState<{ [key: string]: number }>({});
+  const [activeTimers, setActiveTimers] = useState<{ [key: string]: NodeJS.Timeout }>({});
   const [completedSteps, setCompletedSteps] = useState<{ [key: string]: boolean }>({});
 
   const amRoutine = [
